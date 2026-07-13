@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str
 
+    jwt_secret: str
+    access_token_lifetime_seconds: int = 3600
+
+    first_superuser_email: str | None = None
+    first_superuser_password: str | None = None
+    first_superuser_username: str = "admin"
+    first_superuser_client_name: str = "default"
+
     @property
     def database_url(self) -> str:
         return (

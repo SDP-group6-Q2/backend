@@ -5,3 +5,5 @@ alembic==1.18.5
 asyncpg==0.31.0
 pydantic-settings==2.14.2
 python-dotenv==1.2.2
+fastapi-users[sqlalchemy]==15.0.5
+python-multipart==0.0.32
