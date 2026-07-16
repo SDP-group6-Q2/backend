@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.core.auth import auth_backend, fastapi_users
 from app.routes.users import router as users_router
 from app.routes.clients import router as clients_router
+from app.routes.assistant import router as assistant_router
 
 app = FastAPI()
 
@@ -11,8 +12,9 @@ app.include_router(
 )
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(clients_router, prefix="/clients", tags=["clients"])
+app.include_router(assistant_router, prefix="/assistant", tags=["assistant"])
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Hello There!"}
