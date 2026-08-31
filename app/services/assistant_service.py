@@ -19,14 +19,15 @@ class AssistantService:
 
     async def _get_or_create_conversation(
         self, user: UserModel, machine_id: str, conversation_id: str | None
-    ) -> ConversationModel:
+    ) -> tuple[ConversationModel, list[MessageModel]]:
         if conversation_id is None:
-            return await self.conversation_repository.create_conversation(str(user.id), machine_id)
+            conversation = await self.conversation_repository.create_conversation(str(user.id), machine_id)
+            return conversation, []
 
         conversation = await self.conversation_repository.get_conversation_by_id(conversation_id)
         if conversation is None or str(conversation.user_id) != str(user.id):
             raise ValueError(f"Conversation with id '{conversation_id}' not found.")
-        return conversation
+        return conversation, conversation.messages
 
     @staticmethod
     def _history_from_messages(messages: list[MessageModel]) -> list[dict[str, str]]:
@@ -34,8 +35,8 @@ class AssistantService:
 
     async def ask_assistant(self, machine_id: str, user: UserModel, message: str, conversation_id: str | None = None) -> tuple[str, str]:
         """Ask the assistant, appending to conversation_id's history if given. Returns (conversation_id, answer)."""
-        conversation = await self._get_or_create_conversation(user, machine_id, conversation_id)
-        history = self._history_from_messages(conversation.messages)
+        conversation, messages = await self._get_or_create_conversation(user, machine_id, conversation_id)
+        history = self._history_from_messages(messages)
 
         try:
             answer = self.assistant.ask(message, str(user.client_id), machine_id, history=history)
