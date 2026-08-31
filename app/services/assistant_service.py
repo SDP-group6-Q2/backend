@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,9 +21,14 @@ class AssistantService:
     async def _get_or_create_conversation(
         self, user: UserModel, machine_id: str, conversation_id: str | None
     ) -> tuple[ConversationModel, list[MessageModel]]:
-        if conversation_id is None:
+        if not conversation_id:
             conversation = await self.conversation_repository.create_conversation(str(user.id), machine_id)
             return conversation, []
+
+        try:
+            uuid.UUID(conversation_id)
+        except ValueError:
+            raise ValueError(f"Conversation with id '{conversation_id}' not found.")
 
         conversation = await self.conversation_repository.get_conversation_by_id(conversation_id)
         if conversation is None or str(conversation.user_id) != str(user.id):
@@ -49,6 +55,11 @@ class AssistantService:
         return str(conversation.id), answer
 
     async def get_history(self, conversation_id: str, user: UserModel) -> ConversationModel:
+        try:
+            uuid.UUID(conversation_id)
+        except ValueError:
+            raise ValueError(f"Conversation with id '{conversation_id}' not found.")
+
         conversation = await self.conversation_repository.get_conversation_by_id(conversation_id)
         if conversation is None or str(conversation.user_id) != str(user.id):
             raise ValueError(f"Conversation with id '{conversation_id}' not found.")
