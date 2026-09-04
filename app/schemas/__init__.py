@@ -1,6 +1,6 @@
 from app.schemas.user import OwnPasswordUpdate, UserCreate, UserRead, UserUpdate
 from app.schemas.client import CreateClientRequest, CreateClientResponse
-from app.schemas.assistant import ChatMessageRequest, ChatMessageResponse
+from app.schemas.assistant import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
 
 __all__ = [
     "OwnPasswordUpdate",
@@ -10,5 +10,7 @@ __all__ = [
     "CreateClientRequest",
     "CreateClientResponse",
     "ChatMessageRequest",
-    "ChatMessageResponse"
+    "ChatMessageResponse",
+    "ConversationHistory",
+    "MessageRead",
 ]
