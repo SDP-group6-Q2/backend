@@ -45,7 +45,7 @@ class AssistantService:
         history = self._history_from_messages(messages)
 
         try:
-            answer = self.assistant.ask(message, str(user.client_id), machine_id, history=history)
+            answer = self.assistant.ask(message, user.user_id, machine_id, history=history)
         except Exception as e:
             raise Exception(f"Error while asking the assistant: {e}")
 

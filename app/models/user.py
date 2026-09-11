@@ -30,6 +30,7 @@ class UserModel(SQLAlchemyBaseUserTableUUID, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("client.id"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
