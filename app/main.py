@@ -6,6 +6,7 @@ from app.routes.users import router as users_router
 from app.routes.clients import router as clients_router
 from app.routes.assistant import router as assistant_router
 
+import logging
 app = FastAPI()
 
 app.add_middleware(
@@ -23,6 +24,7 @@ app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(clients_router, prefix="/clients", tags=["clients"])
 app.include_router(assistant_router, prefix="/assistant", tags=["assistant"])
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 @app.get("/")
 async def root():
