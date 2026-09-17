@@ -1,31 +1,10 @@
-import uuid
 from datetime import datetime, timezone
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import Boolean, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-
-
-class ClientModel(Base):
-    __tablename__ = "client"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    # Bridge key into mcp-server's `assistant` database (assistant.companies.companyid),
-    # validated at creation time (see app/routes/clients.py). country/sector/city/
-    # currency/locale below are auto-filled from that same lookup, not independently
-    # maintained -- mcp-server's fleet dataset is the source of truth for company
-    # profile data, this is a cache of it set once at creation.
-    company_id: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
-    country: Mapped[str] = mapped_column(String(100), nullable=True)
-    sector: Mapped[str] = mapped_column(String(100), nullable=True)
-    city: Mapped[str] = mapped_column(String(100), nullable=True)
-    currency: Mapped[str] = mapped_column(String(10), nullable=True)
-    locale: Mapped[str] = mapped_column(String(10), nullable=True)
-
-    users: Mapped[list["UserModel"]] = relationship(back_populates="client")
 
 
 class UserModel(SQLAlchemyBaseUserTableUUID, Base):
@@ -34,20 +13,16 @@ class UserModel(SQLAlchemyBaseUserTableUUID, Base):
     # new users are inactive until a superuser activates them
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("client.id"), nullable=False)
     # Bridge key into mcp-server's `assistant` database (assistant.users.userid) --
-    # the fleet dataset is the sole source of truth for what company/visibility
-    # tier this maps to; validated against it at creation time (see
-    # app/routes/users.py), never mirrored locally. Nullable: staff/superuser
-    # accounts legitimately have no fleet identity.
+    # the fleet dataset is the sole source of truth for what company/visibility tier/
+    # first_name/last_name/job_title this maps to; validated against it at creation
+    # time (see app/routes/users.py) and fetched live via
+    # app/services/mcp_directory_client.lookup_user when needed for display, never
+    # mirrored locally (including company: there is no separate company_id column
+    # here -- it's derived transitively through user_id whenever needed). Nullable:
+    # staff/superuser accounts legitimately have no fleet identity.
     user_id: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-
-    first_name: Mapped[str] = mapped_column(String(50), nullable=True)
-    last_name: Mapped[str] = mapped_column(String(50), nullable=True)
-    job_title: Mapped[str] = mapped_column(String(100), nullable=True)
-
-    client: Mapped["ClientModel"] = relationship(back_populates="users")

@@ -1,4 +1,4 @@
 from app.models.conversation import ConversationModel, MessageModel
-from app.models.user import ClientModel, UserModel
+from app.models.user import UserModel
 
-__all__ = ["ClientModel", "ConversationModel", "MessageModel", "UserModel"]
+__all__ = ["ConversationModel", "MessageModel", "UserModel"]
