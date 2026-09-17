@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.auth import current_active_user
+from app.core.auth import current_active_user, get_raw_bearer_token
 from app.models import UserModel
 from app.schemas import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
 from app.services import get_assistant_service, AssistantService
@@ -11,11 +11,12 @@ router = APIRouter(dependencies=[Depends(current_active_user)])
 async def ask_assistant(
     message: ChatMessageRequest,
     user: UserModel = Depends(current_active_user),
+    auth_token: str = Depends(get_raw_bearer_token),
     assistant_service: AssistantService = Depends(get_assistant_service)
 ):
     try:
         conversation_id, answer = await assistant_service.ask_assistant(
-            message.machine_id, user, message.message, message.conversation_id
+            message.machine_id, user, message.message, auth_token, message.conversation_id
         )
         return ChatMessageResponse(
             user_id=str(user.id),

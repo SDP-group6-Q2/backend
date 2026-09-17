@@ -18,9 +18,17 @@ class ClientRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create_client(self, name: str) -> ClientModel:
+    async def create_client(self, name: str, company_profile: dict) -> ClientModel:
         try:
-            new_client = ClientModel(name=name)
+            new_client = ClientModel(
+                name=name,
+                company_id=company_profile["company_id"],
+                country=company_profile["country"],
+                sector=company_profile["sector"],
+                city=company_profile["city"],
+                currency=company_profile["currency"],
+                locale=company_profile["locale"],
+            )
             self.db_session.add(new_client)
             await self.db_session.commit()
             await self.db_session.refresh(new_client)

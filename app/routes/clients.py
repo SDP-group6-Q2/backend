@@ -16,7 +16,7 @@ async def create_client(
     client_service: ClientService = Depends(get_client_service),
 ) -> CreateClientResponse:
     try:
-        return await client_service.create_client(client_data.name)
+        return await client_service.create_client(client_data.name, client_data.company_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

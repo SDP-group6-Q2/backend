@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -12,6 +12,11 @@ class ClientModel(Base):
     __tablename__ = "client"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    # Bridge key into mcp-server's `assistant` database (assistant.companies.companyid),
+    # validated at creation time (see app/routes/clients.py). country/sector/city/
+    # currency/locale below are auto-filled from that same lookup, not independently
+    # maintained -- mcp-server's fleet dataset is the source of truth for company
+    # profile data, this is a cache of it set once at creation.
     company_id: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     country: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -30,6 +35,11 @@ class UserModel(SQLAlchemyBaseUserTableUUID, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("client.id"), nullable=False)
+    # Bridge key into mcp-server's `assistant` database (assistant.users.userid) --
+    # the fleet dataset is the sole source of truth for what company/visibility
+    # tier this maps to; validated against it at creation time (see
+    # app/routes/users.py), never mirrored locally. Nullable: staff/superuser
+    # accounts legitimately have no fleet identity.
     user_id: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=True)
     username: Mapped[str] = mapped_column(String(30), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -39,13 +49,5 @@ class UserModel(SQLAlchemyBaseUserTableUUID, Base):
     first_name: Mapped[str] = mapped_column(String(50), nullable=True)
     last_name: Mapped[str] = mapped_column(String(50), nullable=True)
     job_title: Mapped[str] = mapped_column(String(100), nullable=True)
-    visibility: Mapped[str] = mapped_column(String(20), nullable=True)
-
-    __table_args__ = (
-        CheckConstraint(
-            "visibility IN ('full', 'technician', 'commercial')",
-            name="ck_user_visibility",
-        ),
-    )
 
     client: Mapped["ClientModel"] = relationship(back_populates="users")

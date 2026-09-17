@@ -39,13 +39,29 @@ class AssistantService:
     def _history_from_messages(messages: list[MessageModel]) -> list[dict[str, str]]:
         return [{"role": message.role, "content": message.content} for message in messages]
 
-    async def ask_assistant(self, machine_id: str, user: UserModel, message: str, conversation_id: str | None = None) -> tuple[str, str]:
-        """Ask the assistant, appending to conversation_id's history if given. Returns (conversation_id, answer)."""
+    async def ask_assistant(
+        self,
+        machine_id: str,
+        user: UserModel,
+        message: str,
+        auth_token: str,
+        conversation_id: str | None = None,
+    ) -> tuple[str, str]:
+        """Ask the assistant, appending to conversation_id's history if given. Returns (conversation_id, answer).
+
+        `auth_token` is the caller's own JWT, forwarded down to FleetAssistant
+        so its MCP client can present it to the gateway on every tool call --
+        the gateway derives trusted identity from this same token rather than
+        from anything the LLM could influence.
+        """
         conversation, messages = await self._get_or_create_conversation(user, machine_id, conversation_id)
         history = self._history_from_messages(messages)
 
         try:
-            answer = self.assistant.ask(message, user.user_id, machine_id, history=history)
+            if not user:
+                raise ValueError("User not found.")
+            print("Asking:", message, "from user:", user.user_id, "about machine:", machine_id)
+            answer = await self.assistant.aask(message, user.user_id, machine_id, auth_token, history=history)
         except Exception as e:
             raise Exception(f"Error while asking the assistant: {e}")
 
