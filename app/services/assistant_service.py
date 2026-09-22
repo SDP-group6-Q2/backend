@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import assistant_bootstrap  # noqa: F401  (adds assistant/ to sys.path so its `src.*` imports resolve)
 from src.FleetAssistant import FleetAssistant
+from src.storage.manual_documents import get_manual_url as get_manual_signed_url
 
 from app.db.session import get_db
 from app.models import ConversationModel, MessageModel, UserModel
@@ -64,6 +65,15 @@ class AssistantService:
         if conversation is None or str(conversation.user_id) != str(user.id):
             raise ValueError(f"Conversation with id '{conversation_id}' not found.")
         return conversation
+
+    def get_manual_url(self, machine_id: str, user: UserModel) -> str:
+        """Return a short-lived signed URL for machine_id's manual PDF. Raises
+        ValueError if the user isn't authorized for that machine or no manual
+        is on file -- same tenant/visibility check the manuals RAG tool uses."""
+        url = get_manual_signed_url(user.user_id, machine_id)
+        if url is None:
+            raise ValueError(f"No manual available for machine_id '{machine_id}'.")
+        return url
 
 def get_assistant_service(db_session: AsyncSession = Depends(get_db)) -> AssistantService:
     return AssistantService(ConversationRepository(db_session))
