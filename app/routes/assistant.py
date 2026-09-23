@@ -33,6 +33,18 @@ async def ask_assistant(
             detail=f"Error while asking the assistant: {e}"
         )
 
+@router.get("/manuals/{machine_id}")
+async def get_manual(
+    machine_id: str,
+    user: UserModel = Depends(current_active_user),
+    assistant_service: AssistantService = Depends(get_assistant_service),
+):
+    try:
+        url = assistant_service.get_manual_url(machine_id, user)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return {"url": url}
+
 @router.get("/{conversation_id}", response_model=ConversationHistory)
 async def get_conversation_history(
     conversation_id: str,
