@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     jwt_secret: str
     access_token_lifetime_seconds: int = 3600
 
+    dataset_path: str = "/app/data/AROL_Q2_synthetic_fleet_dataset.xlsx"
+
     orchestrator_url: str = "http://orchestrator:8001"
     orchestrator_timeout_seconds: float = 120
 
