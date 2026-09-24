@@ -17,6 +17,7 @@ from app.schemas.fleet import (
     TelemetrySnapshotRead,
     TelemetrySummaryRow,
 )
+from app.schemas.manual import ManualRead, ManualUrlRead
 from app.schemas.pagination import Page, to_page
 
 __all__ = [
@@ -42,6 +43,8 @@ __all__ = [
     "MaintenanceTicketRead",
     "TelemetrySnapshotRead",
     "TelemetrySummaryRow",
+    "ManualRead",
+    "ManualUrlRead",
     "Page",
     "to_page",
 ]

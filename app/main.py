@@ -8,9 +8,10 @@ from app.routes.clients import router as clients_router
 from app.routes.assistant import router as assistant_router
 from app.routes.machines import router as machines_router
 from app.routes.maintenance import router as maintenance_router
+from app.routes.manuals import router as manuals_router
 from app.routes.orders import router as orders_router
 from app.routes.quotes import router as quotes_router
-from app.core.exceptions import AccessDeniedError, InvalidCursorError, NotFoundError
+from app.core.exceptions import AccessDeniedError, InvalidCursorError, NotFoundError, StorageUnavailableError
 
 import logging
 app = FastAPI()
@@ -31,6 +32,7 @@ app.include_router(clients_router, prefix="/clients", tags=["clients"])
 app.include_router(assistant_router, prefix="/assistant", tags=["assistant"])
 app.include_router(machines_router, prefix="/machines", tags=["machines"])
 app.include_router(maintenance_router, prefix="/maintenance-tickets", tags=["maintenance"])
+app.include_router(manuals_router, prefix="/manuals", tags=["manuals"])
 app.include_router(quotes_router, prefix="/quotes", tags=["quotes"])
 app.include_router(orders_router, prefix="/orders", tags=["orders"])
 
@@ -54,3 +56,8 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 @app.get("/")
 async def root():
     return {"message": "Hello There!"}
+
+
+@app.exception_handler(StorageUnavailableError)
+async def storage_unavailable_handler(_: Request, exc: StorageUnavailableError):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})

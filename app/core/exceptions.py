@@ -12,3 +12,7 @@ class NotFoundError(Exception):
 
 class InvalidCursorError(ValueError):
     """A pagination cursor that couldn't be decoded."""
+
+
+class StorageUnavailableError(Exception):
+    """The document storage isn't configured or couldn't be reached."""

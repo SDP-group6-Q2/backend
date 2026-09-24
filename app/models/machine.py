@@ -40,6 +40,8 @@ class MachineModel(Base):
     configuration_profile: Mapped[str | None] = mapped_column(Text)
     plc_family: Mapped[str | None] = mapped_column(String(50))
     software_version: Mapped[str | None] = mapped_column(String(50))
+    # Object key of the machine's manual PDF in the manuals bucket (one manual per machine).
+    storage_path: Mapped[str | None] = mapped_column(String(200))
 
     __table_args__ = (
         CheckConstraint(

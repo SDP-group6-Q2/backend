@@ -15,6 +15,11 @@ class Settings(BaseSettings):
 
     dataset_path: str = "/app/data/AROL_Q2_synthetic_fleet_dataset.xlsx"
 
+    supabase_url: str | None = None
+    supabase_service_role_key: str | None = None
+    manuals_bucket: str = "manuals"
+    manual_url_ttl_seconds: int = 60
+
     orchestrator_url: str = "http://orchestrator:8001"
     orchestrator_timeout_seconds: float = 120
 
