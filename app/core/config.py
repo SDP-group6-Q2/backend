@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     jwt_secret: str
     access_token_lifetime_seconds: int = 3600
 
+    orchestrator_url: str = "http://orchestrator:8001"
+    orchestrator_timeout_seconds: float = 120
+
     first_superuser_email: str | None = None
     first_superuser_password: str | None = None
     first_superuser_username: str = "admin"

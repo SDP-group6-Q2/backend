@@ -3,6 +3,7 @@ from app.core.auth import current_active_user
 from app.models import UserModel
 from app.schemas import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
 from app.services import get_assistant_service, AssistantService
+from app.services.assistant_service import AssistantTimeoutError, AssistantUnavailableError
 
 
 router = APIRouter(dependencies=[Depends(current_active_user)])
@@ -26,23 +27,17 @@ async def ask_assistant(
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except AssistantTimeoutError as e:
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(e))
+    except AssistantUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error while asking the assistant: {e}"
         )
-
-@router.get("/manuals/{machine_id}")
-async def get_manual(
-    machine_id: str,
-    user: UserModel = Depends(current_active_user),
-    assistant_service: AssistantService = Depends(get_assistant_service),
-):
-    try:
-        url = assistant_service.get_manual_url(machine_id, user)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    return {"url": url}
 
 @router.get("/{conversation_id}", response_model=ConversationHistory)
 async def get_conversation_history(
