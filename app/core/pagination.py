@@ -7,9 +7,14 @@ cursor is (sort key, id) rather than a bare timestamp, so rows sharing a timesta
 ticket date) are neither repeated nor skipped between pages.
 """
 
+import base64
+import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Generic, TypeVar
+
+from app.core.exceptions import InvalidCursorError
 
 T = TypeVar("T")
 
@@ -50,3 +55,23 @@ def cap_rows(rows: Sequence[T], max_rows: int, cursor_of: Callable[[T], Cursor])
         oldest_included_timestamp=last.sort_key if last else None,
         next_cursor=last if truncated else None,
     )
+
+
+def encode_cursor(cursor: Cursor | None) -> str | None:
+    """Opaque URL-safe token for clients; decode_cursor is its inverse."""
+    if cursor is None:
+        return None
+    kind = "datetime" if isinstance(cursor.sort_key, datetime) else "date"
+    payload = json.dumps([kind, cursor.sort_key.isoformat(), cursor.id])
+    return base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+
+
+def decode_cursor(token: str | None) -> Cursor | None:
+    if token is None:
+        return None
+    try:
+        kind, iso, row_id = json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
+        sort_key = datetime.fromisoformat(iso) if kind == "datetime" else date.fromisoformat(iso)
+        return Cursor(sort_key, str(row_id))
+    except (ValueError, TypeError, KeyError):
+        raise InvalidCursorError("Invalid pagination cursor.") from None

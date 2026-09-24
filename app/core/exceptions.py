@@ -8,3 +8,7 @@ class AccessDeniedError(Exception):
 
 class NotFoundError(Exception):
     """The requested row doesn't exist inside the user's own company."""
+
+
+class InvalidCursorError(ValueError):
+    """A pagination cursor that couldn't be decoded."""
