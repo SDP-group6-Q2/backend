@@ -13,7 +13,8 @@ class ConversationModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
-    machine_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # The machine the conversation was started about; none for company-wide conversations.
+    machine_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)

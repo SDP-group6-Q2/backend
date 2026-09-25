@@ -24,7 +24,7 @@ class AssistantService:
         self.conversation_repository = conversation_repository
 
     async def _get_or_create_conversation(
-        self, user: UserModel, machine_id: str, conversation_id: str | None
+        self, user: UserModel, machine_id: str | None, conversation_id: str | None
     ) -> tuple[ConversationModel, list[MessageModel]]:
         if not conversation_id:
             conversation = await self.conversation_repository.create_conversation(str(user.id), machine_id)
@@ -52,7 +52,7 @@ class AssistantService:
 
     @staticmethod
     async def _call_orchestrator(
-        question: str, machine_id: str, visibility: str, authorization: str, history: list[dict]
+        question: str, machine_id: str | None, visibility: str, authorization: str, history: list[dict]
     ) -> tuple[str, list]:
         """Returns (answer, trace): the trace is what the turn's tool calls retrieved, to store with the answer."""
         try:
@@ -79,7 +79,7 @@ class AssistantService:
 
     async def ask_assistant(
         self,
-        machine_id: str,
+        machine_id: str | None,
         user: UserModel,
         message: str,
         conversation_id: str | None = None,
