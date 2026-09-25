@@ -1,4 +1,0 @@
-[submodule "assistant"]
-	path = assistant
-	url = https://github.com/SDP-group6-Q2/ai-orchestrator.git
-	branch = main
