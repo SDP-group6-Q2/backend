@@ -13,6 +13,18 @@ class Settings(BaseSettings):
     jwt_secret: str
     access_token_lifetime_seconds: int = 3600
 
+    # Also create the dataset's users (with known, development-only passwords: see app/seed_dataset.py).
+    seed_dataset_users: bool = True
+    dataset_path: str = "/app/data/AROL_Q2_synthetic_fleet_dataset.xlsx"
+
+    supabase_url: str | None = None
+    supabase_service_role_key: str | None = None
+    manuals_bucket: str = "manuals"
+    manual_url_ttl_seconds: int = 60
+
+    orchestrator_url: str = "http://orchestrator:8001"
+    orchestrator_timeout_seconds: float = 120
+
     first_superuser_email: str | None = None
     first_superuser_password: str | None = None
     first_superuser_username: str = "admin"

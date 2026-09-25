@@ -1,6 +1,24 @@
 from app.schemas.user import OwnPasswordUpdate, UserCreate, UserRead, UserUpdate
 from app.schemas.client import CreateClientRequest, CreateClientResponse
 from app.schemas.assistant import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
+from app.schemas.commercial import (
+    OrderLineRead,
+    OrderRead,
+    QuoteLineRead,
+    QuoteRead,
+    QuoteRevisionRead,
+)
+from app.schemas.fleet import (
+    AlarmRead,
+    AlarmSummaryRow,
+    MachineRead,
+    MaintenanceHistoryRow,
+    MaintenanceTicketRead,
+    TelemetrySnapshotRead,
+    TelemetrySummaryRow,
+)
+from app.schemas.manual import ManualRead, ManualUrlRead
+from app.schemas.pagination import Page, to_page
 
 __all__ = [
     "OwnPasswordUpdate",
@@ -13,4 +31,20 @@ __all__ = [
     "ChatMessageResponse",
     "ConversationHistory",
     "MessageRead",
+    "OrderLineRead",
+    "OrderRead",
+    "QuoteLineRead",
+    "QuoteRead",
+    "QuoteRevisionRead",
+    "AlarmRead",
+    "AlarmSummaryRow",
+    "MachineRead",
+    "MaintenanceHistoryRow",
+    "MaintenanceTicketRead",
+    "TelemetrySnapshotRead",
+    "TelemetrySummaryRow",
+    "ManualRead",
+    "ManualUrlRead",
+    "Page",
+    "to_page",
 ]

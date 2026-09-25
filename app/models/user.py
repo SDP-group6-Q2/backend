@@ -48,4 +48,4 @@ class UserModel(SQLAlchemyBaseUserTableUUID, Base):
         ),
     )
 
-    client: Mapped["ClientModel"] = relationship(back_populates="users")
+    client: Mapped["ClientModel"] = relationship(back_populates="users", lazy="joined")

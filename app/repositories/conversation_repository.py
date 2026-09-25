@@ -17,15 +17,17 @@ class ConversationRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create_conversation(self, user_id: str, machine_id: str) -> ConversationModel:
+    async def create_conversation(self, user_id: str, machine_id: str | None) -> ConversationModel:
         conversation = ConversationModel(user_id=user_id, machine_id=machine_id)
         self.db_session.add(conversation)
         await self.db_session.commit()
         await self.db_session.refresh(conversation)
         return conversation
 
-    async def add_message(self, conversation_id: str, role: str, content: str) -> MessageModel:
-        message = MessageModel(conversation_id=conversation_id, role=role, content=content)
+    async def add_message(
+        self, conversation_id: str, role: str, content: str, trace: list | None = None
+    ) -> MessageModel:
+        message = MessageModel(conversation_id=conversation_id, role=role, content=content, trace=trace)
         self.db_session.add(message)
         await self.db_session.commit()
         await self.db_session.refresh(message)
