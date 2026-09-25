@@ -3,8 +3,12 @@
     python -m app.seed_dataset [--path /path/to/AROL_Q2_synthetic_fleet_dataset.xlsx]
 
 Rows are upserted in foreign-key order. Companies are upserted into `client` by company_id.
-The dataset's Users sheet is not loaded: API users register on their own and carry their
-own client and visibility.
+
+The dataset's Users sheet is loaded into `user` too (unless SEED_DATASET_USERS=false or --no-users), as
+active accounts of their company with the sheet's visibility tier. **Their password is the user's first
+name followed by the last name, in lowercase** (Elena Fabbri -> "elenafabbri"): fine for a development
+dataset, never for a real deployment. Existing users only get their profile fields refreshed: a password
+someone changed, or an account an admin deactivated, is left alone.
 """
 
 import argparse
@@ -14,6 +18,7 @@ from datetime import date, datetime
 from typing import Any
 
 import openpyxl
+from fastapi_users.password import PasswordHelper
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +37,7 @@ from app.models import (
     QuoteModel,
     QuoteRevisionModel,
     TelemetrySnapshotModel,
+    UserModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,10 +99,63 @@ async def _seed_companies(session: AsyncSession, workbook: openpyxl.Workbook) ->
     await session.flush()
 
 
-async def seed(path: str) -> None:
+def _dataset_password(first_name: str, last_name: str) -> str:
+    """"Elena", "Fabbri" -> "elenafabbri"."""
+    return "".join(f"{first_name}{last_name}".split()).lower()
+
+
+async def _seed_users(session: AsyncSession, workbook: openpyxl.Workbook) -> None:
+    """Create the dataset's users. Needs the companies to exist (call after _seed_companies)."""
+    clients = {c.company_id: c for c in (await session.execute(select(ClientModel))).scalars() if c.company_id}
+    hasher = PasswordHelper()
+    created = 0
+    for row in _rows(workbook, "Users"):
+        client = clients.get(row["companyId"])
+        if client is None:
+            logger.warning("User %s skipped: unknown company %s", row["userId"], row["companyId"])
+            continue
+        # Match on email only. The business key (user_id) must never identify an account here: an
+        # existing account (e.g. the superuser) may hold a dataset user's id, and rewriting it would
+        # silently turn it into somebody else.
+        user = (await session.execute(select(UserModel).where(UserModel.email == row["email"]))).scalar_one_or_none()
+        if user is None:
+            holder = (
+                await session.execute(select(UserModel.email).where(UserModel.user_id == row["userId"]))
+            ).scalar_one_or_none()
+            if holder is not None:
+                logger.warning(
+                    "User %s (%s) skipped: its id is already held by %s", row["userId"], row["email"], holder
+                )
+                continue
+        if user is None:
+            # Hash only for new users: hashing is deliberately slow.
+            user = UserModel(
+                email=row["email"],
+                hashed_password=hasher.hash(_dataset_password(row["firstName"], row["lastName"])),
+                is_active=True,  # "All users are considered active accounts" (dataset spec)
+                is_verified=True,
+                is_superuser=False,
+                client_id=client.id,
+            )
+            session.add(user)
+            created += 1
+        user.user_id = row["userId"]
+        user.username = f"{row['firstName']}.{row['lastName']}".lower()[:30]
+        user.first_name = row["firstName"]
+        user.last_name = row["lastName"]
+        user.job_title = row["jobTitle"]
+        user.visibility = row["visibility"]
+        user.client_id = client.id
+    await session.flush()
+    logger.info("Dataset users: %d created, the rest refreshed", created)
+
+
+async def seed(path: str, with_users: bool = True) -> None:
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     async with async_session_maker() as session:
         await _seed_companies(session, workbook)
+        if with_users:
+            await _seed_users(session, workbook)
 
         await _upsert(
             session,
@@ -278,4 +337,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Load the AROL fleet dataset into the database.")
     parser.add_argument("--path", default=settings.dataset_path, help="Path to the dataset xlsx.")
-    asyncio.run(seed(parser.parse_args().path))
+    parser.add_argument("--no-users", action="store_true", help="Don't create the dataset's users.")
+    args = parser.parse_args()
+    asyncio.run(seed(args.path, with_users=settings.seed_dataset_users and not args.no_users))

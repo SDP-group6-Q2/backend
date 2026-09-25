@@ -41,13 +41,20 @@ class AssistantService:
         return conversation, conversation.messages
 
     @staticmethod
-    def _history_from_messages(messages: list[MessageModel]) -> list[dict[str, str]]:
-        return [{"role": message.role, "content": message.content} for message in messages]
+    def _history_from_messages(messages: list[MessageModel]) -> list[dict]:
+        history = []
+        for message in messages:
+            turn: dict = {"role": message.role, "content": message.content}
+            if message.trace:  # what an earlier assistant turn retrieved, so follow-ups can build on it
+                turn["trace"] = message.trace
+            history.append(turn)
+        return history
 
     @staticmethod
     async def _call_orchestrator(
-        question: str, machine_id: str, visibility: str, authorization: str, history: list[dict[str, str]]
-    ) -> str:
+        question: str, machine_id: str, visibility: str, authorization: str, history: list[dict]
+    ) -> tuple[str, list]:
+        """Returns (answer, trace): the trace is what the turn's tool calls retrieved, to store with the answer."""
         try:
             async with httpx.AsyncClient(timeout=settings.orchestrator_timeout_seconds) as client:
                 response = await client.post(
@@ -67,7 +74,8 @@ class AssistantService:
             raise AssistantTimeoutError("The assistant took too long to answer.") from e
         except httpx.HTTPError as e:
             raise AssistantUnavailableError(f"The assistant is unavailable: {e!r}") from e
-        return response.json()["answer"]
+        body = response.json()
+        return body["answer"], body.get("trace") or []
 
     async def ask_assistant(
         self,
@@ -86,10 +94,10 @@ class AssistantService:
         conversation, messages = await self._get_or_create_conversation(user, machine_id, conversation_id)
         history = self._history_from_messages(messages)
 
-        answer = await self._call_orchestrator(message, machine_id, user.visibility, authorization, history)
+        answer, trace = await self._call_orchestrator(message, machine_id, user.visibility, authorization, history)
 
         await self.conversation_repository.add_message(str(conversation.id), "user", message)
-        await self.conversation_repository.add_message(str(conversation.id), "assistant", answer)
+        await self.conversation_repository.add_message(str(conversation.id), "assistant", answer, trace=trace)
 
         return str(conversation.id), answer
 
