@@ -5,6 +5,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.exceptions import AccessDeniedError
 from app.db.session import get_db
 from app.models import ConversationModel, MessageModel, UserModel
 from app.repositories import ConversationRepository
@@ -45,16 +46,19 @@ class AssistantService:
 
     @staticmethod
     async def _call_orchestrator(
-        question: str, user_id: str, machine_id: str, history: list[dict[str, str]]
+        question: str, machine_id: str, visibility: str, authorization: str, history: list[dict[str, str]]
     ) -> str:
         try:
             async with httpx.AsyncClient(timeout=settings.orchestrator_timeout_seconds) as client:
                 response = await client.post(
                     f"{settings.orchestrator_url}/chat",
+                    # The user's own token: the orchestrator forwards it to the MCP server, which forwards it
+                    # to this API, so every data tool runs with this user's permissions.
+                    headers={"Authorization": authorization},
                     json={
                         "question": question,
-                        "user_id": user_id,
                         "machine_id": machine_id,
+                        "visibility": visibility,
                         "history": history,
                     },
                 )
@@ -65,15 +69,24 @@ class AssistantService:
             raise AssistantUnavailableError(f"The assistant is unavailable: {e!r}") from e
         return response.json()["answer"]
 
-    async def ask_assistant(self, machine_id: str, user: UserModel, message: str, conversation_id: str | None = None) -> tuple[str, str]:
-        """Ask the assistant, appending to conversation_id's history if given. Returns (conversation_id, answer)."""
-        if user.user_id is None:
-            raise PermissionError("This user has no assistant user_id assigned.")
+    async def ask_assistant(
+        self,
+        machine_id: str,
+        user: UserModel,
+        message: str,
+        conversation_id: str | None = None,
+        authorization: str = "",
+    ) -> tuple[str, str]:
+        """Ask the assistant, appending to conversation_id's history if given. Returns (conversation_id, answer).
+
+        `authorization` is the caller's own "Bearer <jwt>" header, forwarded so the assistant's tools act as this user."""
+        if not user.visibility:
+            raise AccessDeniedError("This user has no data access tier assigned.")
 
         conversation, messages = await self._get_or_create_conversation(user, machine_id, conversation_id)
         history = self._history_from_messages(messages)
 
-        answer = await self._call_orchestrator(message, user.user_id, machine_id, history)
+        answer = await self._call_orchestrator(message, machine_id, user.visibility, authorization, history)
 
         await self.conversation_repository.add_message(str(conversation.id), "user", message)
         await self.conversation_repository.add_message(str(conversation.id), "assistant", answer)

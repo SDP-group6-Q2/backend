@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from app.core.auth import current_active_user
+from app.core.exceptions import AccessDeniedError
 from app.models import UserModel
 from app.schemas import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
 from app.services import get_assistant_service, AssistantService
@@ -12,11 +13,14 @@ router = APIRouter(dependencies=[Depends(current_active_user)])
 async def ask_assistant(
     message: ChatMessageRequest,
     user: UserModel = Depends(current_active_user),
-    assistant_service: AssistantService = Depends(get_assistant_service)
+    assistant_service: AssistantService = Depends(get_assistant_service),
+    # current_active_user has already validated this token; the assistant forwards it so that the data
+    # tools run with this user's own permissions.
+    authorization: str = Header(),
 ):
     try:
         conversation_id, answer = await assistant_service.ask_assistant(
-            message.machine_id, user, message.message, message.conversation_id
+            message.machine_id, user, message.message, message.conversation_id, authorization
         )
         return ChatMessageResponse(
             user_id=str(user.id),
@@ -27,8 +31,8 @@ async def ask_assistant(
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except AccessDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except AssistantTimeoutError as e:
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(e))
     except AssistantUnavailableError as e:
