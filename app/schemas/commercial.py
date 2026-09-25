@@ -27,8 +27,8 @@ class QuoteRevisionRead(BaseModel):
 
 
 class QuoteLineRead(BaseModel):
-    """`price` is already net of the revision's discount_rate. `machine_id` is null on lines
-    that don't refer to an installed machine."""
+    """`price` is already net of the revision's discount_rate, in `currency` (the quote's). `machine_id` is
+    null on lines that don't refer to an installed machine."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,6 +36,7 @@ class QuoteLineRead(BaseModel):
     quote_revision_id: str
     machine_id: str | None
     price: float | None
+    currency: str | None = None
     description: str | None
 
 

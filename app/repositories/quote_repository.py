@@ -44,8 +44,10 @@ class QuoteRepository:
         return result.scalar_one_or_none()
 
     async def list_lines(self, quote_revision_id: str, company_id: str) -> list[QuoteLineModel]:
+        """Lines of one revision. Each line gets a transient `currency` attribute: the currency of its quote
+        (line prices carry none of their own)."""
         result = await self.db_session.execute(
-            select(QuoteLineModel)
+            select(QuoteLineModel, QuoteModel.currency)
             .join(QuoteRevisionModel, QuoteRevisionModel.id == QuoteLineModel.quote_revision_id)
             .join(QuoteModel, QuoteModel.id == QuoteRevisionModel.quote_id)
             .where(
@@ -54,4 +56,8 @@ class QuoteRepository:
             )
             .order_by(QuoteLineModel.id)
         )
-        return list(result.scalars().all())
+        lines = []
+        for line, currency in result.all():
+            line.currency = currency
+            lines.append(line)
+        return lines
