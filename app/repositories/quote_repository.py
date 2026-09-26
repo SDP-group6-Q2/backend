@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import QuoteLineModel, QuoteModel, QuoteRevisionModel
@@ -42,6 +42,19 @@ class QuoteRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def list_revision_totals(self, company_id: str) -> list[tuple[QuoteRevisionModel, int, float | None]]:
+        """Every revision of the company's quotes with its line count and net total (null when it has no priced
+        lines), ordered by quote then revision number."""
+        result = await self.db_session.execute(
+            select(QuoteRevisionModel, func.count(QuoteLineModel.id), func.sum(QuoteLineModel.price))
+            .join(QuoteModel, QuoteModel.id == QuoteRevisionModel.quote_id)
+            .outerjoin(QuoteLineModel, QuoteLineModel.quote_revision_id == QuoteRevisionModel.id)
+            .where(QuoteModel.company_id == company_id)
+            .group_by(QuoteRevisionModel.id)
+            .order_by(QuoteRevisionModel.quote_id, QuoteRevisionModel.revision_number)
+        )
+        return [(revision, count, total) for revision, count, total in result.all()]
 
     async def list_lines(self, quote_revision_id: str, company_id: str) -> list[QuoteLineModel]:
         """Lines of one revision. Each line gets a transient `currency` attribute: the currency of its quote

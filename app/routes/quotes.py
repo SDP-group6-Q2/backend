@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.auth import current_active_user
 from app.models import UserModel
-from app.schemas import OrderRead, QuoteLineRead, QuoteRead, QuoteRevisionRead
+from app.schemas import OrderRead, QuoteLineRead, QuoteOverviewRow, QuoteRead, QuoteRevisionRead
 from app.services import (
     OrderService,
     QuoteService,
@@ -19,6 +19,15 @@ async def get_company_quotes(
     quote_service: QuoteService = Depends(get_quote_service),
 ):
     return await quote_service.get_company_quotes(user)
+
+
+@router.get("/overview", response_model=list[QuoteOverviewRow])
+async def get_quotes_overview(
+    user: UserModel = Depends(current_active_user),
+    quote_service: QuoteService = Depends(get_quote_service),
+):
+    """Newest first, each quote with its latest revision's status, line count and net total, and its orders."""
+    return await quote_service.get_quotes_overview(user)
 
 
 @router.get("/revisions/{quote_revision_id}/lines", response_model=list[QuoteLineRead])

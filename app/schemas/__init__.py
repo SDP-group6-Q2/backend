@@ -3,8 +3,10 @@ from app.schemas.client import CreateClientRequest, CreateClientResponse
 from app.schemas.assistant import ChatMessageRequest, ChatMessageResponse, ConversationHistory, MessageRead
 from app.schemas.commercial import (
     OrderLineRead,
+    OrderOverviewRow,
     OrderRead,
     QuoteLineRead,
+    QuoteOverviewRow,
     QuoteRead,
     QuoteRevisionRead,
 )
@@ -32,8 +34,10 @@ __all__ = [
     "ConversationHistory",
     "MessageRead",
     "OrderLineRead",
+    "OrderOverviewRow",
     "OrderRead",
     "QuoteLineRead",
+    "QuoteOverviewRow",
     "QuoteRead",
     "QuoteRevisionRead",
     "AlarmRead",
