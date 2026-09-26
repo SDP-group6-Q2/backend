@@ -1,9 +1,11 @@
+from collections.abc import Sequence
 from datetime import date
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AccessDeniedError
+from app.core.filters import ticket_statuses
 from app.db.session import get_db
 from app.core.pagination import MAX_ROWS, CappedResult, Cursor, cap_rows, clamp_limit
 from app.models import MaintenanceTicketModel, UserModel
@@ -36,13 +38,16 @@ class MaintenanceService:
         until: date | None = None,
         limit: int = MAX_ROWS,
         before: Cursor | None = None,
+        statuses: Sequence[str] | None = None,
+        priorities: Sequence[str] | None = None,
     ) -> CappedResult[MaintenanceTicketModel]:
         """Tickets of the company's machines, newest first, capped at `limit` (max 100). Range matches
-        createdDate. When truncated, pass `next_cursor` as `before` to get the next older page."""
+        createdDate; `statuses` ("open" included) and `priorities` keep only matching tickets. When truncated,
+        pass `next_cursor` as `before` to get the next older page."""
         company_id = self._authorized_company_id(user)
         limit = clamp_limit(limit)
         rows = await self.maintenance_repository.list_company_tickets(
-            company_id, since, until, before, limit + 1
+            company_id, since, until, before, limit + 1, ticket_statuses(statuses), priorities
         )
         return cap_rows(rows, limit, lambda row: Cursor(row.created_date, row.id))
 
@@ -54,16 +59,19 @@ class MaintenanceService:
         until: date | None = None,
         limit: int = MAX_ROWS,
         before: Cursor | None = None,
+        statuses: Sequence[str] | None = None,
+        priorities: Sequence[str] | None = None,
     ) -> CappedResult[dict]:
         """A machine's tickets, newest first, capped at `limit` (max 100), each with its triggering alarm
-        (if any). When truncated, pass `next_cursor` as `before` to get the next older page."""
+        (if any); `statuses` ("open" included) and `priorities` keep only matching tickets. When truncated, pass
+        `next_cursor` as `before` to get the next older page."""
         company_id = self._authorized_company_id(user)
         # A missing machine and another company's machine are indistinguishable on purpose.
         if await self.machine_repository.get_machine_company_id(machine_id) != company_id:
             raise AccessDeniedError(f"You cannot access machine '{machine_id}'.")
         limit = clamp_limit(limit)
         rows = await self.maintenance_repository.get_machine_history(
-            machine_id, since, until, before, limit + 1
+            machine_id, since, until, before, limit + 1, ticket_statuses(statuses), priorities
         )
         return cap_rows(rows, limit, lambda row: Cursor(row["created_date"], row["ticket_id"]))
 

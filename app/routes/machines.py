@@ -4,6 +4,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import current_active_user
+from app.core.filters import AlarmSeverity, AlarmStatus, TicketPriority, TicketStatus
 from app.core.pagination import MAX_ROWS, decode_cursor
 from app.models import UserModel
 from app.schemas import (
@@ -29,6 +30,10 @@ router = APIRouter(dependencies=[Depends(current_active_user)])
 
 _Limit = Query(MAX_ROWS, ge=1, le=MAX_ROWS, description="Page size, at most 100.")
 _Cursor = Query(None, description="`next_cursor` of the previous page, to fetch the next older one.")
+_TicketStatusFilter = Query(
+    None, description='Only tickets with one of these statuses; "open" means Open, In progress or Waiting for parts.'
+)
+_TicketPriorityFilter = Query(None, description="Only tickets with one of these priorities.")
 
 
 @router.get("/", response_model=list[MachineRead])
@@ -104,11 +109,13 @@ async def get_alarm_history(
     until: datetime | None = None,
     limit: int = _Limit,
     cursor: str | None = _Cursor,
+    status: list[AlarmStatus] | None = Query(None, description="Only alarms with one of these statuses."),
+    severity: list[AlarmSeverity] | None = Query(None, description="Only alarms with one of these severities."),
     user: UserModel = Depends(current_active_user),
     telemetry_service: TelemetryService = Depends(get_telemetry_service),
 ):
     result = await telemetry_service.get_alarm_history(
-        user, machine_id, since, until, limit, decode_cursor(cursor)
+        user, machine_id, since, until, limit, decode_cursor(cursor), status, severity
     )
     return to_page(result)
 
@@ -120,6 +127,8 @@ async def get_machine_maintenance_history(
     until: date | None = None,
     limit: int = _Limit,
     cursor: str | None = _Cursor,
+    status: list[TicketStatus] | None = _TicketStatusFilter,
+    priority: list[TicketPriority] | None = _TicketPriorityFilter,
     user: UserModel = Depends(current_active_user),
     maintenance_service: MaintenanceService = Depends(get_maintenance_service),
 ):
@@ -131,5 +140,7 @@ async def get_machine_maintenance_history(
         until,
         limit,
         decode_cursor(cursor),
+        status,
+        priority,
     )
     return to_page(result)

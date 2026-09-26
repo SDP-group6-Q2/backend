@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
@@ -88,12 +89,17 @@ class TelemetryService:
         until: datetime | None = None,
         limit: int = MAX_ROWS,
         before: Cursor | None = None,
+        statuses: Sequence[str] | None = None,
+        severities: Sequence[str] | None = None,
     ) -> CappedResult[AlarmModel]:
-        """The most recent alarms in range, newest first, capped at `limit` (max 100).
-        When truncated, pass `next_cursor` as `before` to get the next older page."""
+        """The most recent alarms in range, newest first, capped at `limit` (max 100); `statuses` and
+        `severities` keep only matching alarms. When truncated, pass `next_cursor` as `before` to get the next
+        older page."""
         await self._require_machine_access(user, machine_id)
         limit = clamp_limit(limit)
-        rows = await self.alarm_repository.get_history(machine_id, since, until, before, limit + 1)
+        rows = await self.alarm_repository.get_history(
+            machine_id, since, until, before, limit + 1, statuses, severities
+        )
         return cap_rows(rows, limit, lambda row: Cursor(row.timestamp, row.id))
 
 

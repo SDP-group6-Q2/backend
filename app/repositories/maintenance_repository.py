@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import date
 
 from sqlalchemy import select, tuple_
@@ -28,6 +29,15 @@ class MaintenanceRepository:
             )
         return query
 
+    @staticmethod
+    def _matching(query: Select, statuses: Sequence[str] | None, priorities: Sequence[str] | None) -> Select:
+        """Only tickets with one of these statuses / priorities (None: no filter)."""
+        if statuses:
+            query = query.where(MaintenanceTicketModel.ticket_status.in_(statuses))
+        if priorities:
+            query = query.where(MaintenanceTicketModel.priority.in_(priorities))
+        return query
+
     async def list_company_tickets(
         self,
         company_id: str,
@@ -35,6 +45,8 @@ class MaintenanceRepository:
         until: date | None,
         before: Cursor | None,
         limit: int,
+        statuses: Sequence[str] | None = None,
+        priorities: Sequence[str] | None = None,
     ) -> list[MaintenanceTicketModel]:
         """Tickets of the company's machines, newest first; `before` restricts to strictly older rows."""
         query = self._in_range(
@@ -45,6 +57,7 @@ class MaintenanceRepository:
             until,
             before,
         )
+        query = self._matching(query, statuses, priorities)
         result = await self.db_session.execute(
             query.order_by(MaintenanceTicketModel.created_date.desc(), MaintenanceTicketModel.id.desc()).limit(limit)
         )
@@ -57,6 +70,8 @@ class MaintenanceRepository:
         until: date | None,
         before: Cursor | None,
         limit: int,
+        statuses: Sequence[str] | None = None,
+        priorities: Sequence[str] | None = None,
     ) -> list[dict]:
         """A machine's tickets, newest first, each with the alarm that triggered it (LEFT JOIN:
         tickets that didn't originate from an alarm are kept)."""
@@ -83,6 +98,7 @@ class MaintenanceRepository:
             until,
             before,
         )
+        query = self._matching(query, statuses, priorities)
         result = await self.db_session.execute(
             query.order_by(MaintenanceTicketModel.created_date.desc(), MaintenanceTicketModel.id.desc()).limit(limit)
         )

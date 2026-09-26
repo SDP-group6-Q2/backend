@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import case, func, select, tuple_
@@ -29,9 +30,16 @@ class AlarmRepository:
         until: datetime | None,
         before: Cursor | None,
         limit: int,
+        statuses: Sequence[str] | None = None,
+        severities: Sequence[str] | None = None,
     ) -> list[AlarmModel]:
-        """Newest first; `before` restricts to rows strictly older than that cursor."""
+        """Newest first; `before` restricts to rows strictly older than that cursor. `statuses` / `severities` keep
+        only alarms with one of those values (None: no filter)."""
         query = self._in_range(select(AlarmModel).where(AlarmModel.machine_id == machine_id), since, until)
+        if statuses:
+            query = query.where(AlarmModel.alarm_status.in_(statuses))
+        if severities:
+            query = query.where(AlarmModel.severity.in_(severities))
         if before is not None:
             query = query.where(
                 tuple_(AlarmModel.timestamp, AlarmModel.id) < tuple_(before.sort_key, before.id)
